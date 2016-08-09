@@ -38,8 +38,8 @@ View中的事件分发和处理涉及到了两个方法：
     
 那么这个事件依旧是被这个View消耗了是被dispatchTouchEvent（）消耗的，并没有将事件分发给onTouchEvent（），所以这个View的onTouchEvent（）不会执行，这是这个事件的传递链是这样的：activity的dispatchTouchEvent（）——>ViewGroup 的dispatchTouchEvent（）——>ViewGroup onInterceptTouchEvent（——>view 的dispatchTouchEvent（）。
 
-在dispatchTouchEvent(MotionEvent event)只要返回false就代表这个View不消耗了这个事件。
-如果在onTouchEvent(MotionEvent event)f中返回false，除了action_down以外后续事件都不会传递到这个View上
+在dispatchTouchEvent(MotionEvent event)只要返回false就代表这个View不消耗这个事件。
+如果在onTouchEvent(MotionEvent event)中返回false，除了action_down以外后续事件都不会传递到这个View上
 当然如果直接在dispatchTouchEvent(MotionEvent event)中直接返回false，这个View的onTouchEvent（）不会执行。原理同直接返回true；
 
 然而在现实中经常会看见这样的写法：
@@ -110,7 +110,31 @@ ViewGroup 的dispatchTouchEvent（）返回true就代表了这个事件是被这
             return true;
     }
     
-那么这个事件ji hu
+那么这个事件就会被当前的ViewGroup直接消耗。既不会交给自己的onInterceptTouchEvent（）以及onTouchEvent（），也不会分发给子view。
+但是如果直接返回false，当前viewGroup既不会消耗事件，也不会对事件做任何分发，但是当前ViewGroup会接收到action_down事件。
+
+然而在现实中经常会看见这样的写法：
+
+     @Override
+     public boolean dispatchTouchEvent(MotionEvent event) {
+        Log.i("eventTest", "=EventView======dispatchTouchEvent==" + event.getAction());
+
+        return super.dispatchTouchEvent(event);
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        Log.i("eventTest", "=EventViewGroup======onInterceptTouchEvent==" + ev.getAction());
+        return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        Log.i("eventTest", "=EventView======onTouchEvent==" + event.getAction());
+        return super.onTouchEvent(event);
+    }
+    
+    这是因为父View中，对这几个方法都有一些默认的处理逻辑。
 
 ##activity的事件分发和处理
 activity的事件分发模型和ViewGrooup类似，只是没有onInterceptTouchEvent(MotionEvent ev)这一步。
@@ -131,6 +155,8 @@ activity的事件分发模型和ViewGrooup类似，只是没有onInterceptTouchE
         Log.i("eventTest", "=MainActivity======onTouchEvent==" + event.getAction());
         return super.onTouchEvent(event);
     }
+    
+    activity的事件先传递给它包含的布局来处理，如果布局不处理才会交给自己的onTouchEvent()处理。
 
 #总结
 为什么在不拦截不处理事件的情况下，事件的分的过程是有acttivity.dispatchTouchEvent(MotionEvent ev) －> viewGroup.dispatchTouchEvent(MotionEvent ev) －>onInterceptTouchEvent(MotionEvent ev)－> view.dispatchTouchEvent(MotionEvent ev)  －> view.onTouchevent(otionEvent ev)－>viewGroup.onTouchevent(otionEvent ev) －> activity.onTouchevent(otionEvent ev)
